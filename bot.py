@@ -44,8 +44,8 @@ def get_current_emoji_to_role(message_id: int):
         data = json.load(f)
 
     for ctf in data:
-        if str(message_id) in data["messages"]:
-            return {int(x) for x in data["messages"]}, int(data["emoji"]), int(data["role"])
+        if str(message_id) in ctf["messages"]:
+            return {int(x) for x in ctf["messages"]}, int(ctf["emoji"]), int(ctf["role"])
 
     return None
 
