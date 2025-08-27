@@ -36,20 +36,30 @@ SHELLPHISH_ACADEMY_CHANNEL=int(os.getenv("SHELLPHISH_ACADEMY_ID"))
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
-STATE_FILE = ".active_role.json"
+STATE_FILE = ".active_roles.json"
 
-def get_current_emoji_to_role():
+def get_current_emoji_to_role(message_id: int):
     data = (None, None, None)
     with open(STATE_FILE, "r") as f:
         data = json.load(f)
-    return {int(x) for x in data["messages"]}, int(data["emoji"]), int(data["role"])
 
-def save_active_emoji_message(messages: List[discord.Message], emoji: discord.Emoji, role: discord.Role):
-    data = {
-        "messages": [message.id for message in messages],
-        "emoji": emoji.id,
-        "role": role.id
-    }
+    for ctf in data:
+        if str(message_id) in ctf["messages"]:
+            return {int(x) for x in ctf["messages"]}, int(ctf["emoji"]), int(ctf["role"])
+
+    return None
+
+def save_active_emoji_message(ctf_name: str, messages: List[discord.Message], emoji: discord.Emoji, role: discord.Role):
+    with open(STATE_FILE, "r") as f:
+        data = json.load(f)
+    data += [
+        {
+            "ctf_name": ctf_name,
+            "messages": [message.id for message in messages],
+            "emoji": emoji.id,
+            "role": role.id
+        }
+    ]
     with open(STATE_FILE, "w+") as f:
         json.dump(data, f, indent=4)
 
@@ -100,7 +110,7 @@ async def create_role_react(role: discord.Role, ctf_name: str, is_academy: bool)
         await message.add_reaction(emoji)
         messages.append(message)
 
-    save_active_emoji_message(messages, emoji, role)
+    save_active_emoji_message(ctf_name, messages, emoji, role)
     return emoji, messages[0]
 
 async def create_category(guild: discord.Guild, role: str, category: str, url: str, username: str, password: str):
@@ -157,7 +167,12 @@ class EmptyRole:
 
 @client.event
 async def on_reaction_add(reaction: discord.Reaction, user: discord.Member):
-    message_ids, emoji_id, role_id = get_current_emoji_to_role()
+    res = get_current_emoji_to_role(reaction.message.id)
+
+    if res is None:
+        return
+
+    message_ids, emoji_id, role_id = res
 
     if user.id == client.user.id:
         return
